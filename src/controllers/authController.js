@@ -1,7 +1,7 @@
 const Therapist=require('../models/Therapist');
 const bcrypt=require('bcryptjs');
 const generateSlug=require('../utils/generateSlug');
-
+const jwt = require('jsonwebtoken');
 
 const signup=async(req,res)=>{
     try{
@@ -34,9 +34,40 @@ const signup=async(req,res)=>{
             name:therapist.name,
             slug:therapist.slug,
         });
+
     } catch(error){
         res.status(500).json({message:error.message});
     }
 };
 
-module.exports={signup}; 
+const login = async(req,res) =>{
+            try{
+                const{email,password} = req.body;
+
+                const therapist = await Therapist.findOne({email});
+                if(!therapist){
+                    return res.status(400).json({message: 'Invalid credentials'});
+                }
+                const isMatch = await bcrypt.compare(password, therapist.password_hash);
+                if(!isMatch){
+                    return res.status(400).json({message: 'Invalid credentials'});
+                }
+                const token = jwt.sign(
+                    {id:therapist._id},
+                    process.env.JWT_SECRET,
+                    {expiresIn:'30d'}
+                );
+                res.status(200).json({
+                    token,
+                    id: therapist._id,
+                    email: therapist.email,
+                    name: therapist.name,
+                    slug: therapist.slug,
+                });
+            }
+            catch(error){
+                res.status(500).json({message: error.message});
+            }
+        };
+
+module.exports={signup, login}; 
